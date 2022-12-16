@@ -18,6 +18,7 @@ use poem::{
 #[command(author, version, about)]
 struct Args {
   /// The file or directory to serve.
+  #[arg(default_value = ".")]
   path: PathBuf,
 
   /// The port to serve on.
