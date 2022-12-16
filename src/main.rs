@@ -1,4 +1,7 @@
-use std::path::PathBuf;
+use std::{
+  io::{Error as IoError, ErrorKind as IoErrorKind},
+  path::PathBuf,
+};
 
 use clap::Parser;
 use indoc::formatdoc;
@@ -85,14 +88,19 @@ fn serve_file(Data(file): Data<&PathBuf>, req: StaticFileRequest) -> Result<impl
 }
 
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+async fn main() -> Result<(), IoError> {
   let args = Args::parse();
+  let path = args.path.clone();
 
-  let app = if args.path.is_file() {
-    Route::new().at("/", get(serve_file)).data(args.path)
+  let app = if path.is_file() {
+    Route::new().at("/", get(serve_file)).data(path)
+  } else if path.is_dir() {
+    Route::new().at("/*path", get(serve)).data(path)
   } else {
-    Route::new().at("/*path", get(serve)).data(args.path)
+    return Err(std::io::Error::new(IoErrorKind::NotFound, format!("{:?} not found", path)));
   };
+
+  println!("serving {:?} at {}:{}...", args.path, args.host, args.port);
 
   Server::new(TcpListener::bind((args.host, args.port))).run(app).await
 }
