@@ -38,19 +38,27 @@ fn serve(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFileRe
   if file.is_file() {
     Ok(req.create_response(file, true)?.into_response())
   } else if file.is_dir() {
-    let files: Vec<String> = file
+    let mut files: Vec<PathBuf> = file
       .read_dir()
       .map_err(InternalServerError)?
       .into_iter()
       .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+      .collect();
+
+    // sort by lower case
+    files.sort_by(|a, b| a.to_string_lossy().to_lowercase().cmp(&b.to_string_lossy().to_lowercase()));
+
+    let files: Vec<String> = files
+      .into_iter()
       .map(|file| {
         formatdoc! {"
           <li>
-            <a href=\"/{relative}\">{base}</a>
+            <a href=\"/{relative}\">{base}{tail}</a>
           </li>
         ",
           relative = file.strip_prefix(dir).unwrap().to_str().unwrap(),
           base = file.file_name().unwrap().to_string_lossy(),
+          tail = if file.is_dir() { "/" } else { "" },
         }
       })
       .collect();
