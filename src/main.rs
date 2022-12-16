@@ -1,6 +1,6 @@
 use std::{
   io::{Error as IoError, ErrorKind as IoErrorKind},
-  path::{self, PathBuf},
+  path::PathBuf,
 };
 
 use clap::Parser;
