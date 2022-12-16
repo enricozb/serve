@@ -1,6 +1,6 @@
 use std::{
   io::{Error as IoError, ErrorKind as IoErrorKind},
-  path::PathBuf,
+  path::{self, PathBuf},
 };
 
 use clap::Parser;
@@ -41,14 +41,15 @@ fn serve(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFileRe
       .read_dir()
       .map_err(InternalServerError)?
       .into_iter()
-      .filter_map(|entry| entry.ok().map(|entry| entry.file_name()))
+      .filter_map(|entry| entry.ok().map(|entry| entry.path()))
       .map(|file| {
         formatdoc! {"
           <li>
-            <a href=\"{file}\">{file}</a>
+            <a href=\"/{relative}\">{base}</a>
           </li>
         ",
-          file = file.to_string_lossy()
+          relative = file.strip_prefix(dir).unwrap().to_str().unwrap(),
+          base = file.file_name().unwrap().to_string_lossy(),
         }
       })
       .collect();
@@ -59,10 +60,10 @@ fn serve(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFileRe
           <html>
           <head>
             <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
-            <title>Directory {dir}</title>
+            <title>Directory {file}</title>
           </head>
           <body>
-            <h1>Directory {dir}</h1>
+            <h1>Directory {file}</h1>
             <hr>
             <ul>
               {files}
@@ -71,7 +72,7 @@ fn serve(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFileRe
           </body>
         </html>
       ",
-        dir = dir.to_string_lossy(),
+        file = file.to_string_lossy(),
         files = files.join("\n"),
       })
       .into_response(),
