@@ -9,7 +9,7 @@ use poem::{
   error::{InternalServerError, NotFoundError},
   get, handler,
   listener::TcpListener,
-  web::{Data, Html, Path, StaticFileRequest},
+  web::{Data, Html, Path, Redirect, StaticFileRequest},
   EndpointExt, IntoResponse, Response, Result, Route, Server,
 };
 
@@ -53,7 +53,7 @@ fn serve(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFileRe
       .map(|file| {
         formatdoc! {"
           <li>
-            <a href=\"/{relative}\">{base}{tail}</a>
+            <a href=\"/get/{relative}\">{base}{tail}</a>
           </li>
         ",
           relative = file.strip_prefix(dir).unwrap().to_str().unwrap(),
@@ -69,6 +69,7 @@ fn serve(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFileRe
           <html>
           <head>
             <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
+            <meta name=\"color-scheme\" content=\"light dark\">
             <title>Directory {file}</title>
           </head>
           <body>
@@ -97,18 +98,25 @@ fn serve_file(Data(file): Data<&PathBuf>, req: StaticFileRequest) -> Result<impl
   Ok(req.create_response(file, true)?)
 }
 
+#[handler]
+async fn index() -> Redirect {
+  Redirect::see_other("/get/")
+}
+
 #[tokio::main]
 async fn main() -> Result<(), IoError> {
   let args = Args::parse();
   let path = args.path.clone();
 
   let app = if path.is_file() {
-    Route::new().at("/", get(serve_file)).data(path)
+    Route::new().at("/get/", get(serve_file))
   } else if path.is_dir() {
-    Route::new().at("/*path", get(serve)).data(path)
+    Route::new().at("/get/*path", get(serve))
   } else {
     return Err(std::io::Error::new(IoErrorKind::NotFound, format!("{:?} not found", path)));
   };
+
+  let app = app.at("/", get(index)).data(path);
 
   println!("serving {:?} at {}:{}...", args.path, args.host, args.port);
 
