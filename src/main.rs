@@ -1,4 +1,5 @@
 mod endpoints;
+mod error;
 
 use std::{
   io::{Error as IoError, ErrorKind as IoErrorKind},
@@ -52,6 +53,7 @@ async fn main() -> Result<(), IoError> {
     Route::new()
       .at("/get/*path", get(endpoints::get))
       .at("/by-type/*path", get(endpoints::by_type))
+      .at("/thumbnail/*path", get(endpoints::thumbnail))
   } else {
     return Err(std::io::Error::new(IoErrorKind::NotFound, format!("{path:?} not found")));
   };

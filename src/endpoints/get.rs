@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use indoc::formatdoc;
+use indoc::{formatdoc, indoc};
 use poem::{
   error::{InternalServerError, NotFoundError},
   handler,
@@ -39,6 +39,20 @@ pub fn get(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFile
       })
       .collect();
 
+    let script = indoc! {r#"
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "t") {
+          const path = window.location.pathname;
+
+          if (path.startsWith("/get/")) {
+            window.location.pathname = path.replace("/get/", "/by-type/");
+          } else if (path.startsWith("/by-type/")) {
+            window.location.pathname = path.replace("/by-type/", "/get/");
+          }
+        }
+      });
+    "#};
+
     Ok(
       Html(formatdoc! {"
         <!DOCTYPE html>
@@ -47,6 +61,9 @@ pub fn get(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFile
             <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
             <meta name=\"color-scheme\" content=\"light dark\">
             <title>Directory {file}</title>
+            <script>
+              {script}
+            </script>
           </head>
           <body>
             <h1>Directory {file}</h1>
