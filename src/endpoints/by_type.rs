@@ -40,9 +40,8 @@ impl Extension {
   }
 }
 
-fn section<'a>(dir: &PathBuf, extension: Extension, mut paths: Vec<PathBuf>) -> Result<String> {
-  // sort by lower case
-  paths.sort_by(|a, b| a.to_string_lossy().to_lowercase().cmp(&b.to_string_lossy().to_lowercase()));
+fn section(dir: &PathBuf, extension: &Extension, mut paths: Vec<PathBuf>) -> String {
+  paths.sort_by_key(|a| a.to_string_lossy().to_lowercase());
 
   let files: Vec<String> = paths
     .into_iter()
@@ -59,7 +58,7 @@ fn section<'a>(dir: &PathBuf, extension: Extension, mut paths: Vec<PathBuf>) -> 
     })
     .collect();
 
-  Ok(formatdoc! {"
+  formatdoc! {"
       <h2>
         {extension}
       </h2>
@@ -70,7 +69,7 @@ fn section<'a>(dir: &PathBuf, extension: Extension, mut paths: Vec<PathBuf>) -> 
     ",
     extension = extension.plural_name(),
     files = files.join("\n"),
-  })
+  }
 }
 
 /// Serves a directory or file ordered by type with thumbnails.
@@ -89,7 +88,7 @@ pub fn by_type(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>, req: 
   let mut paths_by_extension: BTreeMap<Extension, Vec<PathBuf>> = BTreeMap::new();
 
   for entry in path.read_dir().map_err(InternalServerError)? {
-    let child_path = if let Some(entry) = entry.ok() { entry.path() } else { continue };
+    let child_path = if let Ok(entry) = entry { entry.path() } else { continue };
 
     let extension = Extension::from(child_path.clone());
 
@@ -108,8 +107,8 @@ pub fn by_type(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>, req: 
 
   let sections: Vec<String> = paths_by_extension
     .into_iter()
-    .map(|(extension, paths)| section(&dir, extension, paths))
-    .collect::<Result<_>>()?;
+    .map(|(extension, paths)| section(dir, &extension, paths))
+    .collect();
 
   Ok(
     Html(formatdoc! {"

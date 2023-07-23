@@ -37,7 +37,7 @@ fn serve_file(Data(file): Data<&PathBuf>, req: StaticFileRequest) -> Result<impl
 }
 
 #[handler]
-async fn index() -> Redirect {
+fn index() -> Redirect {
   Redirect::see_other("/get/")
 }
 
@@ -53,7 +53,7 @@ async fn main() -> Result<(), IoError> {
       .at("/get/*path", get(endpoints::get))
       .at("/by-type/*path", get(endpoints::by_type))
   } else {
-    return Err(std::io::Error::new(IoErrorKind::NotFound, format!("{:?} not found", path)));
+    return Err(std::io::Error::new(IoErrorKind::NotFound, format!("{path:?} not found")));
   };
 
   let app = app.at("/", get(index)).data(path);

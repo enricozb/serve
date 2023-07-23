@@ -19,12 +19,10 @@ pub fn get(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFile
     let mut files: Vec<PathBuf> = file
       .read_dir()
       .map_err(InternalServerError)?
-      .into_iter()
       .filter_map(|entry| entry.ok().map(|entry| entry.path()))
       .collect();
 
-    // sort by lower case
-    files.sort_by(|a, b| a.to_string_lossy().to_lowercase().cmp(&b.to_string_lossy().to_lowercase()));
+    files.sort_by_key(|a| a.to_string_lossy().to_lowercase());
 
     let files: Vec<String> = files
       .into_iter()
