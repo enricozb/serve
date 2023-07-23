@@ -3,7 +3,7 @@ use std::{
   path::PathBuf,
 };
 
-use indoc::formatdoc;
+use indoc::{formatdoc, indoc};
 use poem::{
   error::{InternalServerError, NotFoundError},
   handler,
@@ -11,8 +11,10 @@ use poem::{
   IntoResponse, Response, Result,
 };
 
+use super::thumbnail::supports_thumbnail;
+
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord)]
-enum Extension {
+pub enum Extension {
   Directory,
   Extension(String),
   Missing,
@@ -40,17 +42,15 @@ impl Extension {
   }
 }
 
-fn section(dir: &PathBuf, extension: &Extension, mut paths: Vec<PathBuf>) -> String {
-  paths.sort_by_key(|a| a.to_string_lossy().to_lowercase());
-
+fn list_files(dir: &PathBuf, paths: Vec<PathBuf>) -> String {
   let files: Vec<String> = paths
     .into_iter()
     .map(|file| {
-      formatdoc! {"
+      formatdoc! {r#"
           <li>
-            <a href=\"/by-type/{relative}\">{base}{tail}</a>
+            <a href="/by-type/{relative}">{base}{tail}</a>
           </li>
-        ",
+        "#,
         relative = file.strip_prefix(dir).unwrap().to_str().unwrap(),
         base = file.file_name().unwrap().to_string_lossy(),
         tail = if file.is_dir() { "/" } else { "" },
@@ -59,16 +59,59 @@ fn section(dir: &PathBuf, extension: &Extension, mut paths: Vec<PathBuf>) -> Str
     .collect();
 
   formatdoc! {"
-      <h2>
-        {extension}
-      </h2>
       <ul>
         {files}
       </ul>
+    ",
+    files = files.join("\n"),
+  }
+}
+
+fn thumb_files(dir: &PathBuf, extension: &Extension, paths: Vec<PathBuf>) -> String {
+  let files: Vec<String> = paths
+    .into_iter()
+    .map(|file| {
+      formatdoc! {r#"
+          <div class="entry">
+            <div class="thumbnail">
+              <img src="/thumbnail/{relative}"/>
+            </div>
+            <a href="/by-type/{relative}">{base}{tail}</a>
+          </div>
+        "#,
+        relative = file.strip_prefix(dir).unwrap().to_str().unwrap(),
+        base = file.file_name().unwrap().to_string_lossy(),
+        tail = if file.is_dir() { "/" } else { "" },
+      }
+    })
+    .collect();
+
+  formatdoc! {r#"
+      <div class="thumbnail-list">
+        {files}
+      </div>
+    "#,
+    files = files.join("\n"),
+  }
+}
+
+fn section(dir: &PathBuf, extension: &Extension, mut paths: Vec<PathBuf>) -> String {
+  paths.sort_by_key(|a| a.to_string_lossy().to_lowercase());
+
+  let files = if supports_thumbnail(extension) {
+    thumb_files(dir, extension, paths)
+  } else {
+    list_files(dir, paths)
+  };
+
+  formatdoc! {"
+      <h2>
+        {extension}
+      </h2>
+      {files}
       <hr>
     ",
     extension = extension.plural_name(),
-    files = files.join("\n"),
   }
 }
 
@@ -100,23 +143,48 @@ pub fn by_type(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>, req: 
     paths.push(child_path);
   }
 
-  // for each key (extension):
-  //  - create a section with a flexbox and the files,
-  //  - order by lower case
-  //  - add thumbnails
-
   let sections: Vec<String> = paths_by_extension
     .into_iter()
     .map(|(extension, paths)| section(dir, &extension, paths))
     .collect();
 
+  let css = indoc! {"
+    .thumbnail-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .thumbnail-list .entry {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .thumbnail-list .entry .thumbnail {
+      height: 200px;
+      width: 200px;
+
+      border: 1px solid white;
+    }
+
+    .thumbnail-list .entry .thumbnail img {
+      width: 100%;
+      height: 100%;
+    }
+  "};
+
   Ok(
-    Html(formatdoc! {"
+    Html(formatdoc! {r#"
         <!DOCTYPE html>
         <html>
           <head>
-            <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
-            <meta name=\"color-scheme\" content=\"light dark\">
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <meta name="color-scheme" content="light dark">
+            <style>
+              {css}
+            </style>
             <title>Directory {path}</title>
           </head>
           <body>
@@ -125,7 +193,7 @@ pub fn by_type(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>, req: 
             {sections}
           </body>
         </html>
-      ",
+      "#,
       path = path.to_string_lossy(),
       sections = sections.join("\n"),
     })

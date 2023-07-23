@@ -1,4 +1,5 @@
 mod by_type;
 mod get;
+mod thumbnail;
 
-pub use self::{by_type::*, get::*};
+pub use self::{by_type::*, get::*, thumbnail::*};
