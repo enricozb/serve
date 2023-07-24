@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Stdio};
 
 use poem::{
   error::{BadRequest, InternalServerError},
   handler,
   web::{Data, Path as WebPath},
-  Response, Result,
+  Body, Response, Result,
 };
 use tokio::process::Command;
 
@@ -15,26 +15,26 @@ pub fn supported(ext: &Extension) -> bool {
   matches!(Type::from(ext), Type::Image)
 }
 
-async fn thumbnail_image(path: PathBuf) -> Result<Response> {
-  let output = Command::new("convert")
+fn thumbnail_image(path: PathBuf) -> Result<Response> {
+  let child = Command::new("convert")
     .arg(path)
-    .args(["-thumbnail", "x200", "JPG:-"])
-    .output()
-    .await
+    .args(["-thumbnail", "x100", "JPG:-"])
+    .stdout(Stdio::piped())
+    .spawn()
     .map_err(InternalServerError)?;
 
-  if !output.status.success() {
-    return Err(InternalServerError(Error::Thumbnail(output)));
-  }
+  let Some(stdout) = child.stdout else {
+    return Err(InternalServerError(Error::NoStdout));
+  };
 
-  Ok(Response::builder().content_type("image/jpeg").body(output.stdout))
+  Ok(Response::builder().content_type("image/jpeg").body(Body::from_async_read(stdout)))
 }
 
 /// Returns a thumbnail of `path`.
 #[handler]
-pub async fn thumbnail(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>) -> Result<Response> {
+pub fn thumbnail(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>) -> Result<Response> {
   match Type::from(&Extension::from(&path)) {
-    Type::Image => thumbnail_image(dir.join(path)).await,
+    Type::Image => thumbnail_image(dir.join(path)),
     t @ Type::Other => Err(BadRequest(Error::InvalidType(t))),
   }
 }
