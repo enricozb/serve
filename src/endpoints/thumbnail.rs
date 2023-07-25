@@ -18,7 +18,7 @@ pub fn supported(ext: &Extension) -> bool {
 fn thumbnail_image(path: PathBuf) -> Result<Response> {
   let child = Command::new("convert")
     .arg(path)
-    .args(["-thumbnail", "x100", "JPG:-"])
+    .args(["-auto-orient", "-thumbnail", "x200", "JPG:-"])
     .stdout(Stdio::piped())
     .spawn()
     .map_err(InternalServerError)?;
