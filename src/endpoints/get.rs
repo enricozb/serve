@@ -14,7 +14,7 @@ pub fn get(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFile
   let file = dir.join(path);
 
   if file.is_file() {
-    Ok(req.create_response(file, true)?.into_response())
+    super::file(file, req)
   } else if file.is_dir() {
     let mut files: Vec<PathBuf> = file
       .read_dir()

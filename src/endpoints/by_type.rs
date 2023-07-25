@@ -1,6 +1,6 @@
 use std::{
   collections::{btree_map::Entry, BTreeMap},
-  path::PathBuf,
+  path::{Path, PathBuf},
 };
 
 use indoc::{formatdoc, indoc};
@@ -38,8 +38,10 @@ pub enum Extension {
   Missing,
 }
 
-impl From<&PathBuf> for Extension {
-  fn from(path: &PathBuf) -> Self {
+impl<P: AsRef<Path>> From<P> for Extension {
+  fn from(path: P) -> Self {
+    let path = path.as_ref();
+
     if path.is_dir() {
       Self::Directory
     } else if let Some(ext) = path.extension() {
@@ -141,7 +143,7 @@ pub fn by_type(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>, req: 
   let path = dir.join(path);
 
   if path.is_file() {
-    return Ok(req.create_response(path, true)?.into_response());
+    return super::file(path, req);
   }
 
   if !path.is_dir() {

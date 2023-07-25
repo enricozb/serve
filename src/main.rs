@@ -11,7 +11,7 @@ use poem::{
   get, handler,
   listener::TcpListener,
   web::{Data, Redirect, StaticFileRequest},
-  EndpointExt, IntoResponse, Result, Route, Server,
+  EndpointExt, Response, Result, Route, Server,
 };
 
 /// Serve static files over HTTP.
@@ -33,8 +33,8 @@ struct Args {
 
 /// Serves a single file.
 #[handler]
-fn serve_file(Data(file): Data<&PathBuf>, req: StaticFileRequest) -> Result<impl IntoResponse> {
-  Ok(req.create_response(file, true)?)
+fn serve_file(Data(file): Data<&PathBuf>, req: StaticFileRequest) -> Result<Response> {
+  endpoints::file(file, req)
 }
 
 #[handler]
