@@ -16,6 +16,7 @@ use super::thumbnail;
 #[derive(Debug)]
 pub enum Type {
   Image,
+  Video,
   Other,
 }
 
@@ -24,6 +25,7 @@ impl From<&Extension> for Type {
     match ext {
       Extension::Extension(ext) => match ext.as_ref() {
         "png" | "jpg" | "jpeg" | "tif" => Self::Image,
+        "3gp" | "mp4" | "mov" => Self::Video,
         _ => Self::Other,
       },
       _ => Self::Other,

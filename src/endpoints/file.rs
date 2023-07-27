@@ -27,6 +27,6 @@ pub fn file<P: AsRef<Path>>(path: P, req: StaticFileRequest) -> Result<Response>
 
   match Type::from(&Extension::from(path)) {
     Type::Image => convert_image(path),
-    Type::Other => Ok(req.create_response(path, true)?.into_response()),
+    Type::Video | Type::Other => Ok(req.create_response(path, true)?.into_response()),
   }
 }
