@@ -169,6 +169,15 @@ pub fn by_type(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>, req: 
 
   let sections: Vec<String> = paths_by_extension.into_iter().map(|(ext, paths)| section(dir, &ext, paths)).collect();
 
+  let js = indoc! {r#"
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "t") {
+        const path = window.location.pathname;
+        window.location.pathname = path.replace("/by-type/", "/get/");
+      }
+    });
+  "#};
+
   let css = indoc! {"
     .thumbnail-list {
       display: flex;
@@ -204,6 +213,9 @@ pub fn by_type(WebPath(path): WebPath<PathBuf>, Data(dir): Data<&PathBuf>, req: 
           <head>
             <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
             <meta name="color-scheme" content="light dark">
+            <script>
+              {js}
+            </script>
             <style>
               {css}
             </style>

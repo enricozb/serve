@@ -39,16 +39,11 @@ pub fn get(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFile
       })
       .collect();
 
-    let script = indoc! {r#"
+    let js = indoc! {r#"
       document.addEventListener("keydown", (event) => {
         if (event.key === "t") {
           const path = window.location.pathname;
-
-          if (path.startsWith("/get/")) {
-            window.location.pathname = path.replace("/get/", "/by-type/");
-          } else if (path.startsWith("/by-type/")) {
-            window.location.pathname = path.replace("/by-type/", "/get/");
-          }
+          window.location.pathname = path.replace("/get/", "/by-type/");
         }
       });
     "#};
@@ -60,10 +55,10 @@ pub fn get(Path(path): Path<PathBuf>, Data(dir): Data<&PathBuf>, req: StaticFile
           <head>
             <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
             <meta name=\"color-scheme\" content=\"light dark\">
-            <title>Directory {file}</title>
             <script>
-              {script}
+              {js}
             </script>
+            <title>Directory {file}</title>
           </head>
           <body>
             <h1>Directory {file}</h1>
